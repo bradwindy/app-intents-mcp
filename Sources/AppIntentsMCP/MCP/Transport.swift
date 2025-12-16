@@ -10,49 +10,37 @@ public actor StdioTransport {
         self.output = output
     }
 
-    public static func frame(_ body: String) -> String {
-        let bytes = body.utf8.count
-        return "Content-Length: \(bytes)\r\n\r\n\(body)"
-    }
-
     public func send(_ response: JSONRPCResponse) throws {
         let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
+        encoder.outputFormatting = [.sortedKeys, .withoutEscapingSlashes]
         let data = try encoder.encode(response)
-        guard let body = String(data: data, encoding: .utf8) else {
+        guard var json = String(data: data, encoding: .utf8) else {
             throw TransportError.encodingFailed
         }
-        let framed = Self.frame(body)
-        guard let framedData = framed.data(using: .utf8) else {
+
+        // Ensure JSON doesn't contain embedded newlines
+        json = json.replacingOccurrences(of: "\n", with: "")
+        json = json.replacingOccurrences(of: "\r", with: "")
+
+        // Append newline for message framing
+        json += "\n"
+
+        guard let messageData = json.data(using: .utf8) else {
             throw TransportError.encodingFailed
         }
-        try output.write(contentsOf: framedData)
+        try output.write(contentsOf: messageData)
     }
 
     public func receive() async throws -> JSONRPCRequest {
-        // Read headers until we find Content-Length
-        var contentLength: Int?
+        // Read one line (newline-delimited JSON-RPC message)
+        let line = try await readLine()
 
-        while contentLength == nil {
-            let line = try await readLine()
-            if line.isEmpty {
-                // Empty line means end of headers
-                break
-            }
-            if line.lowercased().hasPrefix("content-length:") {
-                let value = line.dropFirst("content-length:".count).trimmingCharacters(in: .whitespaces)
-                contentLength = Int(value)
-            }
+        guard let data = line.data(using: .utf8) else {
+            throw TransportError.encodingFailed
         }
 
-        guard let length = contentLength else {
-            throw TransportError.missingContentLength
-        }
-
-        // Read body
-        let body = try await readBytes(length)
         let decoder = JSONDecoder()
-        return try decoder.decode(JSONRPCRequest.self, from: body)
+        return try decoder.decode(JSONRPCRequest.self, from: data)
     }
 
     private func readLine() async throws -> String {
@@ -76,19 +64,6 @@ public actor StdioTransport {
         }
     }
 
-    private func readBytes(_ count: Int) async throws -> Data {
-        while buffer.count < count {
-            let newData = try await readFromInput()
-            guard !newData.isEmpty else {
-                throw TransportError.endOfInput
-            }
-            buffer.append(newData)
-        }
-        let result = buffer.prefix(count)
-        buffer.removeFirst(count)
-        return Data(result)
-    }
-
     private func readFromInput() async throws -> Data {
         try await withCheckedThrowingContinuation { continuation in
             do {
@@ -103,6 +78,5 @@ public actor StdioTransport {
 
 public enum TransportError: Error {
     case encodingFailed
-    case missingContentLength
     case endOfInput
 }
