@@ -19,7 +19,8 @@ let package = Package(
                 .product(name: "SQLite", package: "SQLite.swift")
             ],
             swiftSettings: [
-                .enableExperimentalFeature("StrictConcurrency")
+                .enableExperimentalFeature("StrictConcurrency"),
+                .unsafeFlags(["-parse-as-library"])
             ]
         ),
         .testTarget(
