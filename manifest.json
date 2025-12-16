@@ -1,0 +1,22 @@
+{
+  "name": "app-intents-mcp",
+  "version": "1.0.0",
+  "description": "Execute macOS App Intents from AI assistants",
+  "author": "Bradley",
+  "license": "MIT",
+  "homepage": "https://github.com/yourusername/app-intents-mcp",
+  "server": {
+    "type": "binary",
+    "command": "bin/app-intents-mcp"
+  },
+  "capabilities": {
+    "tools": true,
+    "resources": true,
+    "prompts": true
+  },
+  "platform": {
+    "os": ["macos"],
+    "arch": ["arm64", "x86_64"],
+    "minVersion": "13.0"
+  }
+}
