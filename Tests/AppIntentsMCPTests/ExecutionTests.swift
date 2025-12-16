@@ -25,7 +25,7 @@ struct ExecutionTests {
             returnsResult: false
         )
 
-        let result = await executor.execute(intent: intent, parameters: [:])
+        let result = await executor.execute(intent: intent, parameters: nil)
         // Will fail to execute since it's a fake intent, but should return a result
         #expect(result.success == false || result.success == true)
     }
