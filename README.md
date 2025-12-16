@@ -1,5 +1,7 @@
 # app-intents-mcp
 
+WORK IN PROGRESS: Not yet working, watch this space.
+
 An MCP server that exposes macOS App Intents to AI assistants like Claude.
 
 ## Features
